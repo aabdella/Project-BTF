@@ -1,22 +1,34 @@
-// projects/btc-etf-calculator/frontend/app/page.tsx (Updated to fetch JSON)
+// projects/btc-etf-calculator/frontend/app/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, RefreshCw, TrendingUp, TrendingDown, Info, DollarSign, Bitcoin } from 'lucide-react';
+import { ArrowRight, RefreshCw, TrendingUp, TrendingDown, Info, DollarSign, Bitcoin, ExternalLink } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { supabase } from '@/lib/supabaseClient';
 
+// --- Types ---
 type ETF = {
   ticker: string;
   name: string;
-  price: number;
-  btcPerShare: number;
-  dailyFlowBTC: number;
-  totalHeldBTC: number;
+  last_price_usd: number;
+  btc_per_share: number;
+  daily_flow_btc: number;
+  total_held_btc: number;
   issuer: string;
 };
 
-// Initial state while loading
-const LOADING_ETF: ETF = { ticker: 'LOADING...', name: 'Loading Data...', price: 0, btcPerShare: 0, dailyFlowBTC: 0, totalHeldBTC: 0, issuer: '' };
+// --- Mock Fallback while loading ---
+const LOADING_ETF: ETF = { 
+  ticker: 'LOADING...', 
+  name: 'Loading Data...', 
+  last_price_usd: 0, 
+  btc_per_share: 0, 
+  daily_flow_btc: 0, 
+  total_held_btc: 0, 
+  issuer: '' 
+};
+
+// --- Components ---
 
 const StatCard = ({ title, value, subValue, trend }: { title: string, value: string, subValue?: string, trend?: 'up' | 'down' | 'neutral' }) => (
   <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-sm">
@@ -38,15 +50,16 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
 
   const selectedEtf = etfs.find(e => e.ticker === selectedTicker) || etfs[0] || LOADING_ETF;
 
+  // Recalculate whenever inputs change
   useEffect(() => {
-    if (!selectedEtf.btcPerShare) return;
+    if (!selectedEtf.btc_per_share) return;
     const shareVal = parseFloat(shares) || 0;
     const btcVal = parseFloat(btcAmount) || 0;
 
     if (direction === 'etfToBtc') {
-      setBtcAmount((shareVal * selectedEtf.btcPerShare).toFixed(8));
+      setBtcAmount((shareVal * selectedEtf.btc_per_share).toFixed(8));
     } else {
-      setShares((btcVal / selectedEtf.btcPerShare).toFixed(2));
+      setShares((btcVal / selectedEtf.btc_per_share).toFixed(2));
     }
   }, [shares, selectedTicker, direction, selectedEtf]);
 
@@ -60,67 +73,76 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
     setBtcAmount(e.target.value);
   };
 
-  if (!etfs.length) return <div className="p-8 text-center text-slate-500">Loading calculator...</div>;
+  if (!etfs.length) return <div className="p-8 text-center text-slate-500 animate-pulse">Loading live data...</div>;
 
   return (
-    <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-lg">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-lg relative overflow-hidden">
+      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+        <Bitcoin size={120} />
+      </div>
+
+      <div className="flex items-center justify-between mb-6 relative z-10">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <RefreshCw className="w-5 h-5 text-indigo-400" /> Converter
         </h2>
-        <span className="text-xs text-slate-500 bg-slate-900 px-2 py-1 rounded">
-          1 {selectedTicker} = {selectedEtf.btcPerShare?.toFixed(8)} BTC
+        <span className="text-xs text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-700">
+          1 {selectedTicker} = {selectedEtf.btc_per_share?.toFixed(8)} BTC
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] gap-4 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] gap-6 items-end relative z-10">
         
         {/* Left Side (ETF) */}
         <div className="space-y-2">
-          <label className="text-xs text-slate-400 font-semibold uppercase">ETF Ticker</label>
+          <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">ETF Ticker</label>
           <div className="flex gap-2">
-            <select 
-              value={selectedTicker}
-              onChange={(e) => setSelectedTicker(e.target.value)}
-              className="bg-slate-900 text-white border border-slate-700 rounded-lg px-3 py-3 font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              {etfs.map(e => <option key={e.ticker} value={e.ticker}>{e.ticker}</option>)}
-            </select>
-            <div className="relative flex-1">
+            <div className="relative">
+              <select 
+                value={selectedTicker}
+                onChange={(e) => setSelectedTicker(e.target.value)}
+                className="appearance-none bg-slate-900 text-white border border-slate-700 rounded-lg pl-4 pr-10 py-3 font-mono font-bold focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer hover:border-slate-600 transition-colors"
+              >
+                {etfs.map(e => <option key={e.ticker} value={e.ticker}>{e.ticker}</option>)}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+            </div>
+            <div className="relative flex-1 group">
               <input 
                 type="number" 
                 value={shares}
                 onChange={handleShareChange}
-                className="w-full bg-slate-900 text-white border border-slate-700 rounded-lg px-3 py-3 font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full bg-slate-900 text-white border border-slate-700 rounded-lg px-4 py-3 font-mono text-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all group-hover:border-slate-600"
                 placeholder="Shares"
               />
-              <span className="absolute right-3 top-3 text-slate-500 text-sm">SHARES</span>
+              <span className="absolute right-3 top-3 text-slate-600 text-xs font-bold pointer-events-none">SHARES</span>
             </div>
           </div>
-          <div className="text-xs text-slate-500 text-right">
-             ≈ ${(parseFloat(shares || '0') * selectedEtf.price).toLocaleString()} USD
+          <div className="text-xs text-slate-500 text-right font-mono">
+             ≈ ${(parseFloat(shares || '0') * selectedEtf.last_price_usd).toLocaleString()} USD
           </div>
         </div>
 
         {/* Middle Arrow */}
-        <div className="flex justify-center pb-6 text-slate-500">
+        <div className="flex justify-center pb-8 text-slate-600">
           <ArrowRight className="w-6 h-6" />
         </div>
 
         {/* Right Side (BTC) */}
         <div className="space-y-2">
-          <label className="text-xs text-slate-400 font-semibold uppercase">Bitcoin Amount</label>
-          <div className="relative">
+          <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Bitcoin Amount</label>
+          <div className="relative group">
             <input 
               type="number" 
               value={btcAmount}
               onChange={handleBtcChange}
-              className="w-full bg-slate-900 text-emerald-400 border border-slate-700 rounded-lg px-3 py-3 font-mono font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+              className="w-full bg-slate-900 text-emerald-400 border border-slate-700 rounded-lg px-4 py-3 font-mono text-lg font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all group-hover:border-slate-600 placeholder-slate-700"
               placeholder="BTC"
             />
-            <span className="absolute right-3 top-3 text-emerald-600 text-sm font-bold">BTC</span>
+            <span className="absolute right-3 top-3 text-emerald-900/40 text-xs font-bold pointer-events-none">BTC</span>
           </div>
-          <div className="text-xs text-slate-500 text-right">
+          <div className="text-xs text-slate-500 text-right font-mono">
              ≈ ${(parseFloat(btcAmount || '0') * btcPrice).toLocaleString()} USD
           </div>
         </div>
@@ -132,56 +154,85 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
 
 export default function Home() {
   const [etfs, setEtfs] = useState<ETF[]>([]);
-  const [btcPrice, setBtcPrice] = useState(65000);
+  const [btcPrice, setBtcPrice] = useState(97500); // Default fallback
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/data.json')
-      .then(res => res.json())
-      .then(data => {
-        if (data.etfs) {
-          // Normalize flow data (mock data is sometimes string)
-          const normalized = data.etfs.map((e: any) => ({
-            ...e,
-            dailyFlowBTC: parseFloat(e.dailyFlowBTC),
-            totalHeldBTC: parseFloat(e.totalHeldBTC),
-            price: parseFloat(e.price)
-          }));
-          setEtfs(normalized);
+    async function fetchData() {
+      try {
+        const { data, error } = await supabase
+          .from('etfs')
+          .select('*')
+          .order('total_held_btc', { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          setEtfs(data);
         }
-        if (data.btcPrice) setBtcPrice(data.btcPrice);
-      })
-      .catch(err => console.error('Failed to load data:', err));
+      } catch (err) {
+        console.error('Failed to load data from Supabase:', err);
+        // Fallback to local JSON if Supabase fails (e.g. env vars missing)
+        fetch('/data.json')
+          .then(res => res.json())
+          .then(d => {
+             if (d.etfs) {
+                // Map JSON keys to DB keys if needed, or keep consistent
+                // Ideally backend JSON scraper should match DB schema
+                const mapped = d.etfs.map((e: any) => ({
+                    ticker: e.ticker,
+                    name: e.name,
+                    last_price_usd: e.price,
+                    btc_per_share: e.btcPerShare,
+                    daily_flow_btc: parseFloat(e.dailyFlowBTC),
+                    total_held_btc: parseFloat(e.totalHeldBTC),
+                    issuer: e.issuer
+                }));
+                setEtfs(mapped);
+             }
+          });
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchData();
   }, []);
 
   // Calculate totals
-  const totalHeld = etfs.reduce((acc, curr) => acc + (curr.totalHeldBTC || 0), 0);
-  const totalFlow = etfs.reduce((acc, curr) => acc + (curr.dailyFlowBTC || 0), 0);
+  const totalHeld = etfs.reduce((acc, curr) => acc + (curr.total_held_btc || 0), 0);
+  const totalFlow = etfs.reduce((acc, curr) => acc + (curr.daily_flow_btc || 0), 0);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 font-sans">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <main className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 font-sans selection:bg-indigo-500/30">
+      <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}
-        <header className="flex items-center justify-between pb-6 border-b border-slate-800">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
               <Bitcoin className="text-white w-6 h-6" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">BTC ETF Dashboard</h1>
-              <p className="text-slate-500 text-sm">Real-time flows & conversion</p>
+              <div className="flex items-center gap-2 text-slate-500 text-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live Data
+              </div>
             </div>
           </div>
-          <div className="text-right hidden sm:block">
-            <div className="text-xs text-slate-500 uppercase">BTC Price</div>
-            <div className="text-lg font-mono text-emerald-400">${btcPrice.toLocaleString()}</div>
+          <div className="flex items-center gap-6 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-800">
+            <div className="text-right">
+              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">BTC Price</div>
+              <div className="text-lg font-mono text-emerald-400 font-bold">${btcPrice.toLocaleString()}</div>
+            </div>
           </div>
         </header>
 
         {/* Hero Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatCard 
-            title="Total BTC Held by ETFs" 
+            title="Total BTC Held" 
             value={`${totalHeld.toLocaleString()} BTC`} 
             subValue={`≈ $${((totalHeld * btcPrice) / 1e9).toFixed(2)} Billion`} 
           />
@@ -192,9 +243,9 @@ export default function Home() {
             trend={totalFlow >= 0 ? 'up' : 'down'}
           />
            <StatCard 
-            title="Dominance" 
+            title="Supply Shock" 
             value={`${((totalHeld / 21000000) * 100).toFixed(2)}%`} 
-            subValue="of 21M Supply Cap" 
+            subValue="of Total 21M Supply" 
           />
         </div>
 
@@ -207,65 +258,119 @@ export default function Home() {
           {/* Left: Flows Table */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Daily Flows by Issuer</h3>
-              <span className="text-xs text-slate-500">Updated: Today</span>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                Daily Flows
+                <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700">LIVE</span>
+              </h3>
             </div>
             
-            <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-950 text-slate-400 uppercase text-xs font-semibold">
-                  <tr>
-                    <th className="px-6 py-4">Ticker</th>
-                    <th className="px-6 py-4">Price</th>
-                    <th className="px-6 py-4">24h Flow (BTC)</th>
-                    <th className="px-6 py-4 text-right">Total Holdings</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {etfs.map((etf) => (
-                    <tr key={etf.ticker} className="hover:bg-slate-800/50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-white flex flex-col">
-                        <span>{etf.ticker}</span>
-                        <span className="text-xs text-slate-500 font-normal">{etf.issuer}</span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-300">${etf.price.toFixed(2)}</td>
-                      <td className={`px-6 py-4 font-mono font-bold ${etf.dailyFlowBTC >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {etf.dailyFlowBTC > 0 ? '+' : ''}{etf.dailyFlowBTC}
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono text-slate-300">
-                        {etf.totalHeldBTC.toLocaleString()}
-                      </td>
+            <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold tracking-wider border-b border-slate-800">
+                    <tr>
+                      <th className="px-6 py-4">Ticker</th>
+                      <th className="px-6 py-4">Price (USD)</th>
+                      <th className="px-6 py-4">24h Flow</th>
+                      <th className="px-6 py-4 text-right">Holdings (BTC)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {etfs.map((etf) => (
+                      <tr key={etf.ticker} className="hover:bg-slate-800/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-white group-hover:text-indigo-400 transition-colors">{etf.ticker}</span>
+                            <span className="text-[10px] text-slate-500 uppercase">{etf.issuer}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-300 font-mono">
+                          ${etf.last_price_usd?.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2 py-1 rounded font-mono text-xs font-bold ${
+                            etf.daily_flow_btc > 0 
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                              : etf.daily_flow_btc < 0 
+                                ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
+                                : 'text-slate-500'
+                          }`}>
+                            {etf.daily_flow_btc > 0 ? '+' : ''}{etf.daily_flow_btc?.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-slate-300 font-medium">
+                          {etf.total_held_btc?.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          {/* Right: Chart (Simplified for now) */}
+          {/* Right: Chart */}
           <div className="space-y-4">
              <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Flow Trend (30d)</h3>
+              <h3 className="text-lg font-bold text-white">Flow Heatmap</h3>
             </div>
-            <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 h-[300px] flex items-center justify-center">
+            <div className="bg-slate-900 rounded-xl p-6 border border-slate-800 h-[320px] relative">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={etfs}>
-                   <XAxis dataKey="ticker" stroke="#475569" fontSize={12} tickLine={false} axisLine={false} />
-                   <Tooltip 
-                    cursor={{fill: 'transparent'}}
-                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
+                <BarChart data={etfs} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                   <XAxis 
+                    dataKey="ticker" 
+                    stroke="#475569" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    interval={0}
                    />
-                   <Bar dataKey="dailyFlowBTC" radius={[4, 4, 0, 0]}>
+                   <YAxis 
+                    stroke="#475569" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    tickFormatter={(val) => `${val}`}
+                   />
+                   <Tooltip 
+                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px', fontSize: '12px' }}
+                    itemStyle={{ color: '#cbd5e1' }}
+                   />
+                   <Bar dataKey="daily_flow_btc" radius={[4, 4, 4, 4]} barSize={20}>
                       {etfs.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.dailyFlowBTC >= 0 ? '#10b981' : '#f43f5e'} />
+                        <Cell key={`cell-${index}`} fill={entry.daily_flow_btc >= 0 ? '#10b981' : '#f43f5e'} />
                       ))}
                    </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              
+              {/* Overlay if no data */}
+              {etfs.length === 0 && !loading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm rounded-xl">
+                  <p className="text-slate-500 text-sm">No flow data available</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl">
+              <div className="flex gap-3">
+                <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-indigo-200/80 leading-relaxed">
+                  <strong className="text-indigo-200 block mb-1">Did you know?</strong>
+                  IBIT reached $10B in assets faster than any ETF in history. It now holds more Bitcoin than most corporate treasuries combined.
+                </p>
+              </div>
             </div>
           </div>
 
         </div>
+        
+        <footer className="pt-12 pb-8 text-center border-t border-slate-800/50">
+          <p className="text-slate-600 text-sm">
+            Data sourced from on-chain flows & issuer filings. Built with <span className="text-rose-500">♥</span> by ElMeedz.
+          </p>
+        </footer>
       </div>
     </main>
   );
