@@ -218,6 +218,9 @@ export default function Home() {
   // Calculate totals
   const totalHeld = etfs.reduce((acc, curr) => acc + (curr.total_held_btc || 0), 0);
   const totalFlow = etfs.reduce((acc, curr) => acc + (curr.daily_flow_btc || 0), 0);
+  
+  // Daily Mined BTC (Constant ~450 BTC/day after halving)
+  const DAILY_MINED_BTC = 450; 
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 font-sans selection:bg-indigo-500/30">
@@ -253,9 +256,9 @@ export default function Home() {
         </header>
 
         {/* Hero Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard 
-            title="Total BTC Held" 
+            title="Total BTC Held by ETFs" 
             value={`${totalHeld.toLocaleString()} BTC`} 
             subValue={`≈ $${((totalHeld * btcPrice) / 1e9).toFixed(2)} Billion`} 
           />
@@ -265,8 +268,13 @@ export default function Home() {
             subValue={`≈ $${((totalFlow * btcPrice) / 1e6).toFixed(1)} Million`} 
             trend={totalFlow >= 0 ? 'up' : 'down'}
           />
+          <StatCard 
+            title="Daily Mined BTC" 
+            value={`${DAILY_MINED_BTC} BTC`} 
+            subValue={`≈ $${((DAILY_MINED_BTC * btcPrice) / 1e6).toFixed(1)} Million`}
+          />
            <StatCard 
-            title="Supply Shock" 
+            title="ETFs HODL" 
             value={`${((totalHeld / 21000000) * 100).toFixed(2)}%`} 
             subValue="of Total 21M Supply" 
           />
