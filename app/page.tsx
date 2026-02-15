@@ -156,29 +156,39 @@ export default function Home() {
   const [etfs, setEtfs] = useState<ETF[]>([]);
   const [btcPrice, setBtcPrice] = useState(97500); // Default fallback
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
+        console.log('Attempting to fetch data from Supabase...');
         const { data, error } = await supabase
           .from('etfs')
           .select('*')
           .order('total_held_btc', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Error:', error);
+            throw error;
+        }
 
         if (data) {
-          setEtfs(data);
+          console.log('Received data:', data);
+          if (data.length === 0) {
+             setErrorMsg('Connected to Supabase but table is empty (0 rows returned). Check RLS policies or insert data.');
+          } else {
+             setEtfs(data);
+          }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load data from Supabase:', err);
+        setErrorMsg(`Failed to load: ${err.message || 'Unknown error'}`);
+        
         // Fallback to local JSON if Supabase fails (e.g. env vars missing)
         fetch('/data.json')
           .then(res => res.json())
           .then(d => {
              if (d.etfs) {
-                // Map JSON keys to DB keys if needed, or keep consistent
-                // Ideally backend JSON scraper should match DB schema
                 const mapped = d.etfs.map((e: any) => ({
                     ticker: e.ticker,
                     name: e.name,
@@ -216,8 +226,8 @@ export default function Home() {
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">BTC ETF Dashboard</h1>
               <div className="flex items-center gap-2 text-slate-500 text-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Live Data
+                <span className={`w-2 h-2 rounded-full ${loading ? 'bg-yellow-500' : 'bg-emerald-500'} animate-pulse`}></span>
+                {loading ? 'Loading...' : 'Live Data'}
               </div>
             </div>
           </div>
@@ -228,6 +238,13 @@ export default function Home() {
             </div>
           </div>
         </header>
+
+        {/* Error Display */}
+        {errorMsg && (
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-lg text-sm font-mono">
+                DEBUG: {errorMsg}
+            </div>
+        )}
 
         {/* Hero Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
