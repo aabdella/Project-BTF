@@ -1,6 +1,7 @@
 // projects/btc-etf-calculator/frontend/app/layout.tsx
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { GoogleAnalytics } from '@next/third-parties/google';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -40,7 +41,10 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="https://cryptologos.cc/logos/bitcoin-btc-logo.png" />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        {children}
+        <GoogleAnalytics gaId="G-MW4849FT54" />
+      </body>
     </html>
   );
 }
