@@ -16,7 +16,16 @@ export const metadata: Metadata = {
     'FBTC vs IBIT', 'How much BTC does BlackRock hold'
   ],
   icons: {
-    icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png',
+    // Standard Favicon
+    icon: [
+      { url: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png', type: 'image/png' },
+    ],
+    // Apple Touch Icon (for mobile home screen)
+    apple: [
+      { url: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png' },
+    ],
+    // Explicit shortcut fallback
+    shortcut: ['https://cryptologos.cc/logos/bitcoin-btc-logo.png'],
   },
   openGraph: {
     title: 'BTC ETF Dashboard | Live Tracker',
@@ -39,7 +48,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="https://cryptologos.cc/logos/bitcoin-btc-logo.png" />
+        {/* Force explicit favicon link as backup */}
+        <link rel="icon" href="https://cryptologos.cc/logos/bitcoin-btc-logo.png" type="image/png" />
       </head>
       <body className={inter.className}>
         {children}
