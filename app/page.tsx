@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRight, RefreshCw, TrendingUp, TrendingDown, Info, DollarSign, Bitcoin, ExternalLink } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { supabase } from '@/lib/supabaseClient';
+import Image from 'next/image';
 
 // --- Types ---
 type ETF = {
@@ -78,6 +79,7 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
   return (
     <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-lg relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-500">
+        {/* We can also use the real logo here if desired, but Lucide icon is clean for background */}
         <Bitcoin size={120} />
       </div>
 
@@ -168,7 +170,6 @@ export default function Home() {
       })
       .catch(err => {
         console.error('Failed to fetch BTC price:', err);
-        // Fallback: Infer from IBIT price if available? Or just default
         setBtcPrice(71500); // Safe fallback
       });
   }, []);
@@ -225,8 +226,13 @@ export default function Home() {
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
-              <Bitcoin className="text-white w-6 h-6" />
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/10 overflow-hidden">
+              {/* Replaced Lucide Icon with Real Image */}
+              <img 
+                src="https://cryptologos.cc/logos/bitcoin-btc-logo.png" 
+                alt="Bitcoin Logo" 
+                className="w-7 h-7 object-contain"
+              />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">BTC ETF Dashboard</h1>
