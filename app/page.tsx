@@ -29,6 +29,26 @@ const LOADING_ETF: ETF = {
   issuer: '' 
 };
 
+// --- Helper: Check if US Market is Open (9:30 AM - 4:00 PM ET, Mon-Fri) ---
+const isMarketOpen = () => {
+  const now = new Date();
+  // Convert to NY time
+  const nyTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const day = nyTime.getDay(); // 0 = Sun, 6 = Sat
+  const hour = nyTime.getHours();
+  const minute = nyTime.getMinutes();
+  
+  // Weekends
+  if (day === 0 || day === 6) return false;
+  
+  // Market hours: 9:30 - 16:00
+  const minutesOfDay = hour * 60 + minute;
+  const openTime = 9 * 60 + 30; // 9:30 AM
+  const closeTime = 16 * 60;    // 4:00 PM
+  
+  return minutesOfDay >= openTime && minutesOfDay < closeTime;
+};
+
 // --- Components ---
 
 const StatCard = ({ title, value, subValue, trend }: { title: string, value: string, subValue?: string, trend?: 'up' | 'down' | 'neutral' }) => (
@@ -51,7 +71,6 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
 
   const selectedEtf = etfs.find(e => e.ticker === selectedTicker) || etfs[0] || LOADING_ETF;
 
-  // Recalculate whenever inputs change
   useEffect(() => {
     if (!selectedEtf.btc_per_share) return;
     const shareVal = parseFloat(shares) || 0;
@@ -77,18 +96,18 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
   if (!etfs.length) return <div className="p-8 text-center text-slate-500 animate-pulse">Loading calculator...</div>;
 
   return (
-    <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-lg relative overflow-hidden group">
+    <div className="max-w-3xl mx-auto bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-lg relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-500">
-        {/* We can also use the real logo here if desired, but Lucide icon is clean for background */}
         <Bitcoin size={120} />
       </div>
 
-      <div className="flex items-center justify-between mb-6 relative z-10">
+      <div className="flex items-center justify-between mb-8 relative z-10">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <RefreshCw className="w-5 h-5 text-indigo-400" /> Converter
         </h2>
-        <span className="text-xs text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-700">
-          1 {selectedTicker} = {selectedEtf.btc_per_share?.toFixed(8)} BTC
+        {/* Increased Size of Ratio */}
+        <span className="text-sm md:text-base font-mono text-indigo-300 bg-slate-900 px-4 py-2 rounded-lg border border-slate-700 shadow-sm">
+          1 {selectedTicker} = <span className="font-bold text-white">{selectedEtf.btc_per_share?.toFixed(8)}</span> BTC
         </span>
       </div>
 
@@ -158,9 +177,17 @@ export default function Home() {
   const [etfs, setEtfs] = useState<ETF[]>([]);
   const [btcPrice, setBtcPrice] = useState(0); 
   const [loading, setLoading] = useState(true);
+  const [marketOpen, setMarketOpen] = useState(false);
 
-  // 1. Fetch Real BTC Price from CoinGecko
+  // Daily Mined BTC (Constant ~450 BTC/day after halving)
+  const DAILY_MINED_BTC = 450; 
+  // Estimated Circulating Supply for Feb 2026 (Approximation)
+  const CIRCULATING_SUPPLY = 19980000; 
+
   useEffect(() => {
+    setMarketOpen(isMarketOpen());
+    
+    // Fetch Real BTC Price
     fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')
       .then(res => res.json())
       .then(data => {
@@ -170,11 +197,11 @@ export default function Home() {
       })
       .catch(err => {
         console.error('Failed to fetch BTC price:', err);
-        setBtcPrice(71500); // Safe fallback
+        setBtcPrice(71500); 
       });
   }, []);
 
-  // 2. Fetch ETF Data from Supabase
+  // Fetch ETF Data
   useEffect(() => {
     async function fetchData() {
       try {
@@ -190,7 +217,7 @@ export default function Home() {
         }
       } catch (err) {
         console.error('Failed to load data from Supabase:', err);
-        // Fallback to local JSON
+        // Fallback
         fetch('/data.json')
           .then(res => res.json())
           .then(d => {
@@ -218,9 +245,6 @@ export default function Home() {
   // Calculate totals
   const totalHeld = etfs.reduce((acc, curr) => acc + (curr.total_held_btc || 0), 0);
   const totalFlow = etfs.reduce((acc, curr) => acc + (curr.daily_flow_btc || 0), 0);
-  
-  // Daily Mined BTC (Constant ~450 BTC/day after halving)
-  const DAILY_MINED_BTC = 450; 
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 font-sans selection:bg-indigo-500/30">
@@ -230,7 +254,6 @@ export default function Home() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/10 overflow-hidden">
-              {/* Replaced Lucide Icon with Real Image */}
               <img 
                 src="https://cryptologos.cc/logos/bitcoin-btc-logo.png" 
                 alt="Bitcoin Logo" 
@@ -245,10 +268,11 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-6 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-800">
+          <div className="flex items-center gap-4 bg-slate-900/50 px-5 py-3 rounded-xl border border-slate-800 shadow-sm">
             <div className="text-right">
-              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">BTC Price</div>
-              <div className="text-lg font-mono text-emerald-400 font-bold">
+              {/* Swapped Sizes: Label Bigger, Price Smaller/Balanced */}
+              <div className="text-sm font-bold text-slate-400 uppercase tracking-wide">BTC Price</div>
+              <div className="text-base font-mono text-emerald-400 font-medium">
                 {btcPrice ? `$${btcPrice.toLocaleString()}` : '...'}
               </div>
             </div>
@@ -274,13 +298,13 @@ export default function Home() {
             subValue={`≈ $${((DAILY_MINED_BTC * btcPrice) / 1e6).toFixed(1)} Million`}
           />
            <StatCard 
-            title="ETFs HODL" 
-            value={`${((totalHeld / 21000000) * 100).toFixed(2)}%`} 
-            subValue="of Total 21M Supply" 
+            title="HODL by ETFs" 
+            value={`${((totalHeld / CIRCULATING_SUPPLY) * 100).toFixed(2)}%`} 
+            subValue={`of Circulating ${CIRCULATING_SUPPLY.toLocaleString()} Supply`}
           />
         </div>
 
-        {/* Calculator */}
+        {/* Calculator - Centered & Narrower */}
         <Calculator etfs={etfs} btcPrice={btcPrice} />
 
         {/* Main Content Grid */}
@@ -291,7 +315,9 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 Daily Flows
-                <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700">LIVE</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] border ${marketOpen ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                  {marketOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
+                </span>
               </h3>
             </div>
             
@@ -367,6 +393,8 @@ export default function Home() {
                     cursor={{fill: 'rgba(255,255,255,0.05)'}}
                     contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px', fontSize: '12px' }}
                     itemStyle={{ color: '#cbd5e1' }}
+                    formatter={(value: number) => [`${value} BTC`, 'Daily Flow']}
+                    labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
                    />
                    <Bar dataKey="daily_flow_btc" radius={[4, 4, 4, 4]} barSize={20}>
                       {etfs.map((entry, index) => (
