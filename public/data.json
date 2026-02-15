@@ -1,0 +1,116 @@
+{
+  "lastUpdated": "2026-02-15T12:26:36.032Z",
+  "btcPrice": 97500,
+  "etfs": [
+    {
+      "ticker": "IBIT",
+      "name": "iShares Bitcoin Trust",
+      "price": 38.97,
+      "btcPerShare": 0.000543,
+      "dailyFlowBTC": "2.05",
+      "totalHeldBTC": 252000,
+      "issuer": "BlackRock",
+      "lastUpdated": "2026-02-15T12:26:19.162Z"
+    },
+    {
+      "ticker": "FBTC",
+      "name": "Fidelity Wise Origin",
+      "price": 49500.93,
+      "btcPerShare": 0.000662,
+      "dailyFlowBTC": "20.72",
+      "totalHeldBTC": 185000,
+      "issuer": "Fidelity",
+      "lastUpdated": "2026-02-15T12:26:20.719Z"
+    },
+    {
+      "ticker": "GBTC",
+      "name": "Grayscale Bitcoin Trust",
+      "price": 49500.93,
+      "btcPerShare": 0.000892,
+      "dailyFlowBTC": "56.10",
+      "totalHeldBTC": 310000,
+      "issuer": "Grayscale",
+      "lastUpdated": "2026-02-15T12:26:22.518Z"
+    },
+    {
+      "ticker": "ARKB",
+      "name": "ARK 21Shares",
+      "price": 49500.93,
+      "btcPerShare": 0.000658,
+      "dailyFlowBTC": "26.96",
+      "totalHeldBTC": 42000,
+      "issuer": "ARK/21Shares",
+      "lastUpdated": "2026-02-15T12:26:24.113Z"
+    },
+    {
+      "ticker": "BITB",
+      "name": "Bitwise Bitcoin ETF",
+      "price": 49500.93,
+      "btcPerShare": 0.000455,
+      "dailyFlowBTC": "27.82",
+      "totalHeldBTC": 31000,
+      "issuer": "Bitwise",
+      "lastUpdated": "2026-02-15T12:26:25.598Z"
+    },
+    {
+      "ticker": "HODL",
+      "name": "HODL Bitcoin ETF",
+      "price": 49500.93,
+      "btcPerShare": 0.0005,
+      "dailyFlowBTC": "77.08",
+      "totalHeldBTC": 5000,
+      "issuer": "Unknown",
+      "lastUpdated": "2026-02-15T12:26:27.198Z"
+    },
+    {
+      "ticker": "BRRR",
+      "name": "BRRR Bitcoin ETF",
+      "price": 19.41,
+      "btcPerShare": 0.0005,
+      "dailyFlowBTC": "-13.90",
+      "totalHeldBTC": 5000,
+      "issuer": "Unknown",
+      "lastUpdated": "2026-02-15T12:26:28.710Z"
+    },
+    {
+      "ticker": "EZBC",
+      "name": "EZBC Bitcoin ETF",
+      "price": 49500.93,
+      "btcPerShare": 0.0005,
+      "dailyFlowBTC": "-13.87",
+      "totalHeldBTC": 5000,
+      "issuer": "Unknown",
+      "lastUpdated": "2026-02-15T12:26:30.225Z"
+    },
+    {
+      "ticker": "BTCO",
+      "name": "BTCO Bitcoin ETF",
+      "price": 49500.93,
+      "btcPerShare": 0.0005,
+      "dailyFlowBTC": "77.79",
+      "totalHeldBTC": 5000,
+      "issuer": "Unknown",
+      "lastUpdated": "2026-02-15T12:26:31.786Z"
+    },
+    {
+      "ticker": "BTCW",
+      "name": "BTCW Bitcoin ETF",
+      "price": 49500.93,
+      "btcPerShare": 0.0005,
+      "dailyFlowBTC": "6.95",
+      "totalHeldBTC": 5000,
+      "issuer": "Unknown",
+      "lastUpdated": "2026-02-15T12:26:33.358Z"
+    },
+    {
+      "ticker": "DEFI",
+      "name": "DEFI Bitcoin ETF",
+      "price": 49500.93,
+      "btcPerShare": 0.0005,
+      "dailyFlowBTC": "77.65",
+      "totalHeldBTC": 5000,
+      "issuer": "Unknown",
+      "lastUpdated": "2026-02-15T12:26:34.933Z"
+    }
+  ]
+}
