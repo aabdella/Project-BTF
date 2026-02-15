@@ -31,7 +31,7 @@ const LOADING_ETF: ETF = {
 // --- Components ---
 
 const StatCard = ({ title, value, subValue, trend }: { title: string, value: string, subValue?: string, trend?: 'up' | 'down' | 'neutral' }) => (
-  <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-sm">
+  <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-sm hover:border-indigo-500/30 transition-colors">
     <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">{title}</h3>
     <div className="flex items-baseline gap-2">
       <span className="text-2xl font-bold text-white">{value}</span>
@@ -73,11 +73,11 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
     setBtcAmount(e.target.value);
   };
 
-  if (!etfs.length) return <div className="p-8 text-center text-slate-500 animate-pulse">Loading live data...</div>;
+  if (!etfs.length) return <div className="p-8 text-center text-slate-500 animate-pulse">Loading calculator...</div>;
 
   return (
-    <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-lg relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+    <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-lg relative overflow-hidden group">
+      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-500">
         <Bitcoin size={120} />
       </div>
 
@@ -108,12 +108,12 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
                 <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
             </div>
-            <div className="relative flex-1 group">
+            <div className="relative flex-1 group/input">
               <input 
                 type="number" 
                 value={shares}
                 onChange={handleShareChange}
-                className="w-full bg-slate-900 text-white border border-slate-700 rounded-lg px-4 py-3 font-mono text-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all group-hover:border-slate-600"
+                className="w-full bg-slate-900 text-white border border-slate-700 rounded-lg px-4 py-3 font-mono text-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all group-hover/input:border-slate-600"
                 placeholder="Shares"
               />
               <span className="absolute right-3 top-3 text-slate-600 text-xs font-bold pointer-events-none">SHARES</span>
@@ -132,12 +132,12 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
         {/* Right Side (BTC) */}
         <div className="space-y-2">
           <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Bitcoin Amount</label>
-          <div className="relative group">
+          <div className="relative group/input">
             <input 
               type="number" 
               value={btcAmount}
               onChange={handleBtcChange}
-              className="w-full bg-slate-900 text-emerald-400 border border-slate-700 rounded-lg px-4 py-3 font-mono text-lg font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all group-hover:border-slate-600 placeholder-slate-700"
+              className="w-full bg-slate-900 text-emerald-400 border border-slate-700 rounded-lg px-4 py-3 font-mono text-lg font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all group-hover/input:border-slate-600 placeholder-slate-700"
               placeholder="BTC"
             />
             <span className="absolute right-3 top-3 text-emerald-900/40 text-xs font-bold pointer-events-none">BTC</span>
@@ -154,37 +154,42 @@ const Calculator = ({ etfs, btcPrice }: { etfs: ETF[], btcPrice: number }) => {
 
 export default function Home() {
   const [etfs, setEtfs] = useState<ETF[]>([]);
-  const [btcPrice, setBtcPrice] = useState(97500); // Default fallback
+  const [btcPrice, setBtcPrice] = useState(0); 
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // 1. Fetch Real BTC Price from CoinGecko
+  useEffect(() => {
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')
+      .then(res => res.json())
+      .then(data => {
+        if (data.bitcoin?.usd) {
+          setBtcPrice(data.bitcoin.usd);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch BTC price:', err);
+        // Fallback: Infer from IBIT price if available? Or just default
+        setBtcPrice(71500); // Safe fallback
+      });
+  }, []);
+
+  // 2. Fetch ETF Data from Supabase
   useEffect(() => {
     async function fetchData() {
       try {
-        console.log('Attempting to fetch data from Supabase...');
         const { data, error } = await supabase
           .from('etfs')
           .select('*')
           .order('total_held_btc', { ascending: false });
 
-        if (error) {
-            console.error('Supabase Error:', error);
-            throw error;
-        }
+        if (error) throw error;
 
         if (data) {
-          console.log('Received data:', data);
-          if (data.length === 0) {
-             setErrorMsg('Connected to Supabase but table is empty (0 rows returned). Check RLS policies or insert data.');
-          } else {
-             setEtfs(data);
-          }
+          setEtfs(data);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to load data from Supabase:', err);
-        setErrorMsg(`Failed to load: ${err.message || 'Unknown error'}`);
-        
-        // Fallback to local JSON if Supabase fails (e.g. env vars missing)
+        // Fallback to local JSON
         fetch('/data.json')
           .then(res => res.json())
           .then(d => {
@@ -227,24 +232,19 @@ export default function Home() {
               <h1 className="text-2xl font-bold text-white tracking-tight">BTC ETF Dashboard</h1>
               <div className="flex items-center gap-2 text-slate-500 text-sm">
                 <span className={`w-2 h-2 rounded-full ${loading ? 'bg-yellow-500' : 'bg-emerald-500'} animate-pulse`}></span>
-                {loading ? 'Loading...' : 'Live Data'}
+                {loading ? 'Syncing...' : 'Live Data'}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-6 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-800">
             <div className="text-right">
               <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">BTC Price</div>
-              <div className="text-lg font-mono text-emerald-400 font-bold">${btcPrice.toLocaleString()}</div>
+              <div className="text-lg font-mono text-emerald-400 font-bold">
+                {btcPrice ? `$${btcPrice.toLocaleString()}` : '...'}
+              </div>
             </div>
           </div>
         </header>
-
-        {/* Error Display */}
-        {errorMsg && (
-            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-lg text-sm font-mono">
-                DEBUG: {errorMsg}
-            </div>
-        )}
 
         {/* Hero Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
